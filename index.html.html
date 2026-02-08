@@ -11,7 +11,7 @@
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f1f5f9; }
         
-        /* Rebar Texture (ลายเหล็กข้ออ้อย) */
+        /* Rebar Texture */
         .rebar-texture {
             background-image: repeating-linear-gradient(
                 45deg,
@@ -26,14 +26,27 @@
         /* Print Settings */
         @media print {
             .no-print { display: none !important; }
-            body { background: white; padding: 0; }
+            body { background: white; padding: 0; margin: 0; font-size: 10px; line-height: 1.3; }
             .page-break { page-break-before: always; }
-            .print-container { margin: 0; width: 100%; max-width: none; box-shadow: none; border: none; }
-            /* บังคับพิมพ์พื้นหลังสี */
+            .print-container { margin: 0; width: 100%; max-width: none; box-shadow: none; border: none; padding: 6px !important; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .bottom-margin { margin-bottom: 0.3cm; }
+            
+            /* Print-specific styles */
+            h1, h2, h3 { margin: 2px 0 1px 0; padding: 0; line-height: 1.2; }
+            h1 { font-size: 16px; }
+            h2 { font-size: 13px; }
+            h3 { font-size: 11px; }
+            table { margin: 2px 0; font-size: 9px; border-collapse: collapse; }
+            th, td { padding: 2px 3px !important; }
+            thead { font-size: 9px; }
+            p { margin: 0; padding: 0; line-height: 1.3; }
+            .bg-white { padding: 3px !important; margin: 2px 0 !important; }
+            .rounded-xl { border-radius: 1px; }
+            .shadow { box-shadow: none; }
+            tr { page-break-inside: avoid; }
         }
         
-        /* Input Focus Effect */
         input:focus, select:focus {
             outline: 2px solid #24306e;
             outline-offset: 1px;
@@ -74,25 +87,23 @@
             <div class="grid grid-cols-2 md:grid-cols-12 gap-4 mb-6">
                 <div class="col-span-1 md:col-span-2">
                     <label class="block text-xs font-bold text-slate-500 mb-1">ประเภท</label>
-                    <select id="steel-type" class="w-full border border-slate-300 rounded p-2 bg-slate-50">
-                        <option value="DB">DB (ข้ออ้อย)</option>
+                    <select id="steel-type" onchange="updateDiameters()" class="w-full border border-slate-300 rounded p-2 bg-slate-50">
                         <option value="RB">RB (เหล็กกลม)</option>
+                        <option value="DB">DB (ข้ออ้อย)</option>
                     </select>
                 </div>
                 <div class="col-span-1 md:col-span-2">
-                    <label class="block text-xs font-bold text-slate-500 mb-1">ขนาด</label>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">
+                        ขนาด
+                        <button type="button" onclick="openWeightModal()" class="font-bold text-blue-600 hover:text-blue-800 ml-1 cursor-pointer bg-blue-50 px-2 rounded-full text-[10px] border border-blue-200">
+                            <i class="fa-solid fa-gear"></i> ตั้งค่าน้ำหนัก
+                        </button>
+                    </label>
                     <select id="diameter" class="w-full border border-slate-300 rounded p-2 bg-slate-50">
                         <option value="" selected disabled>เลือกขนาด</option>
-                        <option value="6">6 mm</option>
-                        <option value="9">9 mm</option>
-                        <option value="12">12 mm</option>
-                        <option value="16">16 mm</option>
-                        <option value="20">20 mm</option>
-                        <option value="25">25 mm</option>
-                        <option value="28">28 mm</option>
-                        <option value="32">32 mm</option>
                     </select>
                 </div>
+                
                 <div class="col-span-1 md:col-span-2">
                     <label class="block text-xs font-bold text-slate-500 mb-1">ความยาวเต็ม (ม.)</label>
                     <input type="number" id="cut-length" value="10" class="w-full border border-slate-300 rounded p-2">
@@ -101,11 +112,11 @@
                     <label class="block text-xs font-bold text-blue-600 mb-1">ที่ต้องการ (ม.)</label>
                     <input type="number" id="required-length" placeholder="0.00" class="w-full border-2 border-blue-200 rounded p-2 bg-blue-50 font-bold text-slate-800">
                 </div>
-                <div class="col-span-1 md:col-span-1">
+                <div class="col-span-1 md:col-span-2">
                     <label class="block text-xs font-bold text-slate-500 mb-1">จำนวน</label>
                     <input type="number" id="quantity" value="1" min="1" class="w-full border border-slate-300 rounded p-2 text-center">
                 </div>
-                <div class="col-span-2 md:col-span-3">
+                <div class="col-span-2 md:col-span-2">
                     <label class="block text-xs font-bold text-slate-500 mb-1">Note / ตำแหน่ง</label>
                     <input type="text" id="notes" placeholder="เช่น เสา C1" class="w-full border border-slate-300 rounded p-2">
                 </div>
@@ -134,78 +145,274 @@
             </div>
         </div>
 
-        <div id="report-area" class="hidden space-y-6">
+        <div id="report-area" class="hidden space-y-2">
             
-            <div class="bg-white rounded-xl shadow p-6 border border-slate-200">
-                <div class="flex justify-between items-end border-b-2 border-emerald-500 pb-4 mb-4">
+            <div class="bg-white rounded-xl shadow p-3 border border-slate-200">
+                <div class="flex justify-between items-start border-b pb-2 mb-2">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-800">Bill of Materials</h2>
-                        <p class="text-sm text-slate-500">ใบสรุปรายการสั่งซื้อเหล็ก</p>
+                        <h2 class="text-lg font-bold text-slate-800">Bill of Materials</h2>
+                        <p class="text-xs text-slate-500">ใบสรุปรายการสั่งซื้อเหล็ก</p>
                     </div>
-                    <div class="text-right">
-                        <div class="text-xl font-bold text-[#24306e]">MEC</div>
+                    <div class="text-right text-sm">
+                        <div class="font-bold">M<span style="color:#e21c23;">E</span>C</div>
                         <div class="text-xs text-slate-400">Date: <span id="print-date"></span></div>
                     </div>
                 </div>
-                <table class="w-full text-sm">
+                <table class="w-full text-xs">
                     <thead class="bg-emerald-50 text-emerald-900">
                         <tr>
-                            <th class="p-3 text-left">รายการ (Item)</th>
-                            <th class="p-3 text-center">ความยาวมาตรฐาน (ม.)</th>
-                            <th class="p-3 text-center">จำนวนที่ต้องสั่ง (เส้น)</th>
-                            <th class="p-3 text-right">น้ำหนักรวม (กก.)</th>
+                            <th class="p-1 text-left text-xs">รายการ (Item)</th>
+                            <th class="p-1 text-center text-xs">ความยาวมาตรฐาน (ม.)</th>
+                            <th class="p-1 text-center text-xs">จำนวนที่ต้องสั่ง (เส้น)</th>
+                            <th class="p-1 text-center text-xs">น้ำหนักต่อเมตร <span class="text-[8px]">(kg/m)</span></th>
+                            <th class="p-1 text-right text-xs">น้ำหนักรวม (กก.)</th>
                         </tr>
                     </thead>
                     <tbody id="po-table-body" class="divide-y divide-slate-100">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
 
-            <div id="cutting-plan-container" class="space-y-4">
-                </div>
+            <div id="cutting-plan-container" class="space-y-1 bottom-margin">
+            </div>
 
-            <div class="bg-white rounded-xl shadow p-6 border border-slate-200 page-break">
-                <div class="flex items-center gap-2 mb-4 border-b pb-2">
-                    <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600"><i class="fa-solid fa-trash-can"></i></div>
-                    <h2 class="text-lg font-bold text-slate-700">สรุปเศษเหล็ก (Waste Report)</h2>
+            <div class="bg-white rounded-xl shadow p-3 border border-slate-200 page-break">
+                <div class="flex items-center gap-1 mb-2 border-b pb-1">
+                    <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xs"><i class="fa-solid fa-trash-can"></i></div>
+                    <h2 class="text-sm font-bold text-slate-700">สรุปเศษเหล็ก (Waste Report)</h2>
                 </div>
-                <table class="w-full text-sm">
+                <table class="w-full text-xs">
                     <thead class="bg-slate-100">
                         <tr>
-                            <th class="p-2 text-left">Type</th>
-                            <th class="p-2 text-center">ID</th>
-                            <th class="p-2 text-center">เศษเหลือ (ม.)</th>
-                            <th class="p-2 text-left">Note</th>
+                            <th class="p-1 text-left text-xs">Type</th>
+                            <th class="p-1 text-center text-xs">ID</th>
+                            <th class="p-1 text-center text-xs">เศษเหลือ (ม.)</th>
+                            <th class="p-1 text-center text-xs">น้ำหนัก (kg)</th>
+                            <th class="p-1 text-left text-xs">Note</th>
                         </tr>
                     </thead>
                     <tbody id="waste-table-body" class="divide-y divide-slate-100 text-slate-600">
-                        </tbody>
+                    </tbody>
+                    <tfoot class="bg-amber-50 border-t border-amber-300">
+                        <tr class="font-bold text-amber-900 text-xs">
+                            <td class="p-1" colspan="2">รวมทั้งหมด</td>
+                            <td class="p-1 text-center text-red-600" id="total-waste-meters">0.00</td>
+                            <td class="p-1 text-center text-orange-600" id="total-waste-kg">0.00</td>
+                            <td class="p-2"></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
 
-            <div class="text-center text-slate-400 text-xs py-8">
+            <div class="text-center text-slate-400 text-xs py-1">
                 Report generated by MEC Bar-Cut List | Developed by Somoil
             </div>
         </div>
     </main>
 
+    <div id="weight-modal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeWeightModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="fa-solid fa-scale-balanced text-[#24306e]"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-bold text-gray-900" id="modal-title">ตั้งค่าน้ำหนักเหล็ก (kg/m)</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500 mb-4">ค่าเริ่มต้นอ้างอิงตามมาตรฐาน มอก.</p>
+                                
+                                <div id="weight-table-container" class="border rounded-md overflow-hidden">
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                    <button id="btn-save-weights" type="button" onclick="saveWeights()" class="hidden w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#24306e] text-base font-medium text-white hover:bg-slate-800 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        บันทึก
+                    </button>
+                    <button id="btn-edit-weights" type="button" onclick="enableEditMode()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        <i class="fa-solid fa-pen-to-square mr-2 pt-1"></i> แก้ไข
+                    </button>
+                    <button id="btn-reset-weights" type="button" onclick="resetWeights()" class="hidden w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        คืนค่าเดิม
+                    </button>
+                    <button type="button" onclick="closeWeightModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        ปิด
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // --- Variables ---
-        let items = [];
-        const steelWeights = { '6': 0.222, '9': 0.499, '12': 0.888, '16': 1.58, '20': 2.47, '25': 3.85, '28': 4.83, '32': 6.31 };
+        // --- DATA ---
+        // Default Standard Weights
+        const defaultSteelWeights = {
+            'RB': { '6': 0.222, '9': 0.499, '12': 0.888, '15': 1.387, '19': 2.226, '22': 2.984, '25': 3.853 },
+            'DB': { '10': 0.617, '12': 0.888, '16': 1.578, '20': 2.466, '25': 3.853, '28': 4.834, '32': 6.313 }
+        };
+        // Working Weights
+        let currentSteelWeights = JSON.parse(JSON.stringify(defaultSteelWeights));
         
+        const steelSizes = {
+            'RB': ['6', '9', '12', '15', '19', '22', '25'],
+            'DB': ['10', '12', '16', '20', '25', '28', '32']
+        };
+
+        let items = [];
+        let isEditMode = false;
+
         // --- Functions ---
         
+        function updateDiameters() {
+            const typeSelect = document.getElementById('steel-type');
+            const diaDrop = document.getElementById('diameter');
+            if (!typeSelect || !diaDrop) return;
+            
+            const type = typeSelect.value;
+            diaDrop.innerHTML = '<option value="" selected disabled>เลือกขนาด</option>';
+            const sizes = steelSizes[type] || [];
+            sizes.forEach(size => {
+                const opt = document.createElement('option');
+                opt.value = size;
+                opt.textContent = size + ' mm';
+                diaDrop.appendChild(opt);
+            });
+        }
+
+        // --- MODAL LOGIC ---
+        function openWeightModal() {
+            document.getElementById('weight-modal').classList.remove('hidden');
+            renderWeightTable(false);
+        }
+
+        function closeWeightModal() {
+            document.getElementById('weight-modal').classList.add('hidden');
+            isEditMode = false;
+            updateModalButtons();
+        }
+
+        function enableEditMode() {
+            isEditMode = true;
+            renderWeightTable(true);
+            updateModalButtons();
+        }
+
+        function updateModalButtons() {
+            const btnEdit = document.getElementById('btn-edit-weights');
+            const btnSave = document.getElementById('btn-save-weights');
+            const btnReset = document.getElementById('btn-reset-weights');
+
+            if (isEditMode) {
+                btnEdit.classList.add('hidden');
+                btnSave.classList.remove('hidden');
+                btnReset.classList.remove('hidden');
+            } else {
+                btnEdit.classList.remove('hidden');
+                btnSave.classList.add('hidden');
+                btnReset.classList.add('hidden');
+            }
+        }
+
+        function renderWeightTable(editable) {
+            let html = `
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase">Size</th>
+                            <th class="px-3 py-2 text-right text-xs font-bold text-[#24306e]">RB (kg/m)</th>
+                            <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase border-l pl-4">Size</th>
+                            <th class="px-3 py-2 text-right text-xs font-bold text-[#24306e]">DB (kg/m)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+            `;
+
+            const rbSizes = steelSizes['RB'];
+            const dbSizes = steelSizes['DB'];
+            const maxLen = Math.max(rbSizes.length, dbSizes.length);
+
+            for (let i = 0; i < maxLen; i++) {
+                html += '<tr>';
+                
+                // RB Column
+                if (i < rbSizes.length) {
+                    const size = rbSizes[i];
+                    const val = currentSteelWeights['RB'][size];
+                    html += `<td class="px-3 py-2 whitespace-nowrap font-medium text-gray-700">RB ${size}</td>`;
+                    html += `<td class="px-3 py-2 whitespace-nowrap text-right">`;
+                    if (editable) {
+                        html += `<input type="number" step="0.001" id="w-RB-${size}" value="${val}" class="w-20 border border-blue-300 rounded px-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-500">`;
+                    } else {
+                        html += `<span class="text-gray-600">${val.toFixed(3)}</span>`;
+                    }
+                    html += `</td>`;
+                } else {
+                    html += `<td></td><td></td>`;
+                }
+
+                // DB Column
+                if (i < dbSizes.length) {
+                    const size = dbSizes[i];
+                    const val = currentSteelWeights['DB'][size];
+                    html += `<td class="px-3 py-2 whitespace-nowrap font-medium text-gray-700 border-l pl-4">DB ${size}</td>`;
+                    html += `<td class="px-3 py-2 whitespace-nowrap text-right">`;
+                    if (editable) {
+                        html += `<input type="number" step="0.001" id="w-DB-${size}" value="${val}" class="w-20 border border-blue-300 rounded px-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-500">`;
+                    } else {
+                        html += `<span class="text-gray-600">${val.toFixed(3)}</span>`;
+                    }
+                    html += `</td>`;
+                } else {
+                    html += `<td class="border-l"></td><td></td>`;
+                }
+
+                html += '</tr>';
+            }
+
+            html += `</tbody></table>`;
+            document.getElementById('weight-table-container').innerHTML = html;
+        }
+
+        function saveWeights() {
+            try {
+                steelSizes['RB'].forEach(size => {
+                    const el = document.getElementById(`w-RB-${size}`);
+                    if (el) currentSteelWeights['RB'][size] = parseFloat(el.value) || 0;
+                });
+                steelSizes['DB'].forEach(size => {
+                    const el = document.getElementById(`w-DB-${size}`);
+                    if (el) currentSteelWeights['DB'][size] = parseFloat(el.value) || 0;
+                });
+                
+                isEditMode = false;
+                renderWeightTable(false);
+                updateModalButtons();
+                alert('บันทึกค่าน้ำหนักเรียบร้อยแล้ว');
+            } catch (e) {
+                alert('เกิดข้อผิดพลาดในการบันทึก');
+            }
+        }
+
+        function resetWeights() {
+            if(confirm('ต้องการคืนค่ามาตรฐาน (มอก.) ใช่หรือไม่?')) {
+                currentSteelWeights = JSON.parse(JSON.stringify(defaultSteelWeights));
+                renderWeightTable(true);
+            }
+        }
+
         function formatNum(num) {
             return parseFloat(num).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        function showAlert(msg, isError = false) {
-            // Simple alert fallback
-            alert(msg); 
-        }
+        // --- APP LOGIC ---
 
-        // Add Item Logic
         function addItem() {
             try {
                 const type = document.getElementById('steel-type').value;
@@ -217,18 +424,20 @@
 
                 // Validation
                 if (!dia) { alert('กรุณาเลือกขนาดเหล็ก'); return; }
-                if (!reqLen || reqLen <= 0) { alert('กรุณาระบุความยาวที่ต้องการ'); return; }
-                if (!cutLen || cutLen <= 0) { alert('กรุณาระบุความยาวเต็มเส้น'); return; }
+                if (!reqLen || reqLen <= 0 || isNaN(reqLen)) { alert('กรุณาระบุความยาวที่ต้องการ'); return; }
+                if (!cutLen || cutLen <= 0 || isNaN(cutLen)) { alert('กรุณาระบุความยาวเต็มเส้น'); return; }
+                
                 if (reqLen > cutLen) { alert('ความยาวที่ต้องการ ยาวกว่าเหล็กเต็มเส้น!'); return; }
                 if (!qty || qty < 1) { alert('จำนวนต้องมากกว่า 0'); return; }
 
                 // Add to array
                 items.push({
                     id: Date.now(),
-                    type, dia, cutLen, reqLen, qty, note
+                    type, dia, cutLen, reqLen, 
+                    actualReqLen: reqLen,
+                    qty, note
                 });
 
-                // Clear input
                 document.getElementById('required-length').value = '';
                 document.getElementById('notes').value = '';
                 document.getElementById('quantity').value = '1';
@@ -242,7 +451,6 @@
             }
         }
 
-        // Render List
         function renderTempList() {
             const listEl = document.getElementById('temp-list');
             const countEl = document.getElementById('temp-count');
@@ -303,11 +511,9 @@
             document.getElementById('quantity').value = '1';
         }
 
-        // --- Calculation Core ---
         function calculate() {
             if (items.length === 0) return;
 
-            // 1. Group items by Type & Diameter
             const grouped = {};
             items.forEach(item => {
                 const key = `${item.type}|${item.dia}|${item.cutLen}`;
@@ -317,32 +523,38 @@
 
             let poHtml = '';
             let cuttingHtml = '';
-            let wasteHtml = '';
+            let totalWasteMeters = 0;
+            let totalWasteKg = 0;
+            
+            // Collect waste data by type
+            let wasteByType = {};
 
-            // Process each group
             Object.keys(grouped).forEach(key => {
                 const [type, dia, stdLenStr] = key.split('|');
                 const stdLen = parseFloat(stdLenStr);
                 const groupItems = grouped[key];
 
-                // Create pieces array
                 let pieces = [];
                 groupItems.forEach(i => {
                     for (let n = 0; n < i.qty; n++) {
-                        pieces.push({ len: i.reqLen, note: i.note });
+                        pieces.push({ len: i.reqLen, note: i.note, actualLen: i.actualReqLen });
                     }
                 });
-                // Sort Descending (Best Fit / First Fit Descending Strategy)
                 pieces.sort((a, b) => b.len - a.len);
 
-                // Cutting Optimization
                 let bars = [];
                 pieces.forEach(piece => {
                     let placed = false;
+                    const pieceLen = parseFloat(piece.actualLen);
+                    
                     for (let bar of bars) {
-                        if (bar.used + piece.len <= stdLen) {
+                        const currentUsed = parseFloat(bar.used);
+                        // Using small epsilon for float comparison safety
+                        if (currentUsed + pieceLen <= stdLen + 0.00001) {
                             bar.parts.push(piece);
-                            bar.used += piece.len;
+                            bar.used = currentUsed + pieceLen;
+                            // ** CRITICAL FIX: Update waste after adding a piece **
+                            bar.waste = stdLen - bar.used; 
                             placed = true;
                             break;
                         }
@@ -350,53 +562,76 @@
                     if (!placed) {
                         bars.push({
                             parts: [piece],
-                            used: piece.len,
-                            waste: stdLen - piece.len
+                            used: pieceLen,
+                            waste: stdLen - pieceLen
                         });
                     }
                 });
 
-                // Generate HTML for PO
                 const totalBars = bars.length;
-                const unitWeight = steelWeights[dia] || 0;
-                const totalWeight = totalBars * stdLen * unitWeight;
+                const unitWeight = currentSteelWeights[type][dia] || 0;
+                const totalWeight = totalBars * unitWeight * stdLen;
                 
                 poHtml += `
                     <tr class="hover:bg-slate-50">
-                        <td class="p-3 font-bold text-slate-700">${type} - ${dia} mm</td>
-                        <td class="p-3 text-center">${formatNum(stdLen)}</td>
-                        <td class="p-3 text-center font-bold text-blue-600 bg-blue-50">${totalBars}</td>
-                        <td class="p-3 text-right font-mono">${formatNum(totalWeight)}</td>
+                        <td class="p-1 font-bold text-slate-700">${type} - ${dia} mm</td>
+                        <td class="p-1 text-center">${formatNum(stdLen)}</td>
+                        <td class="p-1 text-center font-bold text-blue-600 bg-blue-50">${totalBars}</td>
+                        <td class="p-1 text-center">${formatNum(unitWeight)}</td>
+                        <td class="p-1 text-right font-mono">${formatNum(totalWeight)}</td>
                     </tr>
                 `;
 
-                // Generate HTML for Cutting Plan
-                cuttingHtml += `<div class="bg-white rounded-xl shadow border border-slate-200 p-4 mb-4 break-inside-avoid">`;
-                cuttingHtml += `<div class="border-b pb-2 mb-2 flex justify-between font-bold text-slate-700"><span>${type}-${dia}mm (Full: ${stdLen}m)</span> <span>Total: ${totalBars} Bars</span></div>`;
+                cuttingHtml += `<div class="bg-white rounded-xl shadow border border-slate-200 p-1 mb-1 break-inside-avoid">`;
+                cuttingHtml += `<div class="border-b pb-0.5 mb-0.5 flex justify-between font-bold text-slate-700 text-xs"><span>${type}-${dia}mm (Full: ${stdLen}m)</span> <span>Total: ${totalBars} Bars</span></div>`;
                 
+                const patterns = {};
                 bars.forEach((bar, idx) => {
-                    // Waste Data
-                    const noteStr = [...new Set(bar.parts.map(p => p.note))].join(', ');
-                    wasteHtml += `
-                        <tr class="hover:bg-slate-50 border-b border-slate-100">
-                            <td class="p-2">${type}${dia}</td>
-                            <td class="p-2 text-center text-slate-400">#${idx+1}</td>
-                            <td class="p-2 text-center font-bold text-red-500">${formatNum(bar.waste)}</td>
-                            <td class="p-2 text-xs text-slate-500 truncate max-w-[150px]">${noteStr}</td>
-                        </tr>
-                    `;
+                    // Fix: Use note + pattern to distinguish different note grouping but same cuts
+                    const pattern = bar.parts.map(p => p.len.toFixed(3)).join('|');
+                    if (!patterns[pattern]) {
+                        patterns[pattern] = { count: 0, bar: bar, firstIdx: idx };
+                    }
+                    patterns[pattern].count++;
+                });
 
-                    // Visual Bar
-                    cuttingHtml += `<div class="mb-2 text-xs">`;
-                    cuttingHtml += `<div class="flex justify-between mb-1 text-slate-500"><span>Bar #${idx+1}</span> <span>Waste: ${formatNum(bar.waste)}m</span></div>`;
-                    cuttingHtml += `<div class="flex w-full h-6 bg-slate-200 rounded overflow-hidden border border-slate-300">`;
+                let displayIdx = 0;
+                if (!wasteByType[type]) {
+                    wasteByType[type] = { dia: dia, items: [], totalMeters: 0, totalKg: 0 };
+                }
+
+                Object.keys(patterns).forEach(pattern => {
+                    const patInfo = patterns[pattern];
+                    const bar = patInfo.bar;
+                    displayIdx++;
+                    
+                    const noteStr = [...new Set(bar.parts.map(p => p.note))].join(', ');
+                    const wasteMeters = bar.waste;
+                    const wasteKg = wasteMeters * unitWeight;
+                    totalWasteMeters += wasteMeters;
+                    totalWasteKg += wasteKg;
+                    
+                    wasteByType[type].items.push({
+                        dia: dia,
+                        id: displayIdx,
+                        meters: wasteMeters,
+                        kg: wasteKg,
+                        note: noteStr,
+                        count: patInfo.count
+                    });
+                    wasteByType[type].totalMeters += wasteMeters;
+                    wasteByType[type].totalKg += wasteKg;
+
+                    cuttingHtml += `<div class="mb-0.5 text-xs">`;
+                    cuttingHtml += `<div class="flex justify-between items-start mb-0.5 text-xs"><div><span class="text-slate-700 font-bold text-xs">Bar #${displayIdx}${patInfo.count > 1 ? ` (${patInfo.count} sets)` : ''}</span>${noteStr ? `<div class="text-slate-500 text-xs">สำหรับ: ${noteStr}</div>` : ''}</div> <span class="text-red-500 font-bold text-xs">เศษ: ${formatNum(wasteMeters)}m</span></div>`;
+                    cuttingHtml += `<div class="flex w-full h-3 bg-slate-200 rounded overflow-hidden border border-slate-300">`;
                     
                     bar.parts.forEach((p, pid) => {
                         const width = (p.len / stdLen) * 100;
                         const bgColors = ['bg-slate-600', 'bg-slate-500', 'bg-slate-700', 'bg-slate-800'];
                         const color = bgColors[pid % bgColors.length];
                         cuttingHtml += `
-                            <div style="width:${width}%" class="${color} rebar-texture text-white flex items-center justify-center border-r border-white/20 whitespace-nowrap overflow-hidden px-1" title="${p.len}m (${p.note})">
+                            <div style="width:${width}%" class="${color} rebar-texture text-white flex items-center justify-center border-r border-white/20 whitespace-nowrap overflow-hidden px-0.5 text-xs" title="${p.len}m - ${type}${dia}mm (${p.note})">
                                 ${p.len}
                             </div>
                         `;
@@ -407,21 +642,103 @@
                 cuttingHtml += `</div>`;
             });
 
-            // Update DOM
+            // Build waste HTML grouped by type, then by size
+            let wasteHtml = '';
+            
+            // First, reorganize wasteByType to include size grouping
+            let wasteByTypeSized = {};
+            Object.keys(wasteByType).forEach(type => {
+                const typeData = wasteByType[type];
+                if (!wasteByTypeSized[type]) {
+                    wasteByTypeSized[type] = { totalMeters: 0, totalKg: 0, sizes: {} };
+                }
+                
+                // Group items by type and size
+                typeData.items.forEach(item => {
+                    const sizeKey = `${type}${item.dia}`;
+                    if (!wasteByTypeSized[type].sizes[sizeKey]) {
+                        wasteByTypeSized[type].sizes[sizeKey] = { 
+                            dia: item.dia, 
+                            totalMeters: 0, 
+                            totalKg: 0, 
+                            items: [] 
+                        };
+                    }
+                    wasteByTypeSized[type].sizes[sizeKey].items.push(item);
+                    wasteByTypeSized[type].sizes[sizeKey].totalMeters += item.meters;
+                    wasteByTypeSized[type].sizes[sizeKey].totalKg += item.kg;
+                });
+                wasteByTypeSized[type].totalMeters = typeData.totalMeters;
+                wasteByTypeSized[type].totalKg = typeData.totalKg;
+            });
+
+            // Build HTML
+            Object.keys(wasteByTypeSized).forEach(type => {
+                const typeData = wasteByTypeSized[type];
+                wasteHtml += `<tr class="bg-slate-300 font-bold text-slate-800"><td colspan="5" class="p-1">เหล็ก ${type}</td></tr>`;
+                
+                Object.keys(typeData.sizes).forEach(sizeKey => {
+                    const sizeData = typeData.sizes[sizeKey];
+                    wasteHtml += `
+                        <tr class="bg-slate-100">
+                            <td class="p-1 font-bold text-slate-700">${type} ${sizeData.dia}mm</td>
+                            <td class="p-1 text-center text-slate-500">-</td>
+                            <td class="p-1 text-center text-slate-500">-</td>
+                            <td class="p-1 text-center text-slate-500">-</td>
+                            <td class="p-1"></td>
+                        </tr>
+                    `;
+                    
+                    sizeData.items.forEach(item => {
+                        wasteHtml += `
+                            <tr class="hover:bg-slate-50 border-b border-slate-100">
+                                <td class="p-1 pl-4">${type}${item.dia}</td>
+                                <td class="p-1 text-center text-slate-400">#${item.id}</td>
+                                <td class="p-1 text-center font-bold text-red-500">${formatNum(item.meters)}</td>
+                                <td class="p-1 text-center font-bold text-orange-600">${formatNum(item.kg)}</td>
+                                <td class="p-1 text-xs text-slate-500 truncate max-w-[150px]">${item.note}${item.count > 1 ? ` (${item.count} sets)` : ''}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    wasteHtml += `
+                        <tr class="bg-green-100 border-b border-green-300 font-bold text-green-900">
+                            <td class="p-1 pl-4">รวม ${type}${sizeData.dia}</td>
+                            <td class="p-1 text-center">-</td>
+                            <td class="p-1 text-center">${formatNum(sizeData.totalMeters)}</td>
+                            <td class="p-1 text-center">${formatNum(sizeData.totalKg)}</td>
+                            <td class="p-1"></td>
+                        </tr>
+                    `;
+                });
+                
+                wasteHtml += `
+                    <tr class="bg-blue-200 border-b-2 border-blue-400 font-bold text-blue-900">
+                        <td class="p-1" colspan="2">รวมเหล็ก ${type}</td>
+                        <td class="p-1 text-center">${formatNum(typeData.totalMeters)}</td>
+                        <td class="p-1 text-center">${formatNum(typeData.totalKg)}</td>
+                        <td class="p-1"></td>
+                    </tr>
+                `;
+            });
+            
             document.getElementById('po-table-body').innerHTML = poHtml;
             document.getElementById('cutting-plan-container').innerHTML = cuttingHtml;
             document.getElementById('waste-table-body').innerHTML = wasteHtml;
+            document.getElementById('total-waste-meters').innerText = formatNum(totalWasteMeters);
+            document.getElementById('total-waste-kg').innerText = formatNum(totalWasteKg);
             document.getElementById('print-date').innerText = new Date().toLocaleDateString('th-TH');
 
-            // Show Result
             document.getElementById('report-area').classList.remove('hidden');
-            
-            // Auto Scroll to result
             document.getElementById('report-area').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // --- Init ---
-        // Enter Key Support
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateDiameters);
+        } else {
+            updateDiameters();
+        }
+        
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && document.activeElement.tagName === 'INPUT') {
                 addItem();
